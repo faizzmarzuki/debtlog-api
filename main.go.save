@@ -1,0 +1,56 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+)
+
+var DB *gorm.DB
+
+func ConnectDatabase() {
+	// If you use godotenv, load it in main before calling this.
+	dsn := os.Getenv("DATABASE_DSN")
+	if dsn == "" {
+		host := getenv("DB_HOST", "localhost")
+		port := getenv("DB_PORT", "5432")
+		user := getenv("DB_USER", "postgres")
+		password := getenv("DB_PASSWORD", "")
+		dbname := getenv("DB_NAME", "debtlogdb")
+		timezone := getenv("TIMEZONE", "UTC")
+		dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=%s",
+			host, user, password, dbname, port, timezone)
+	}
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Fatalf("failed to connect database: %v", err)
+	}
+
+	// tune the underlying sql.DB connection pool
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatalf("failed to get sql.DB: %v", err)
+	}
+	sqlDB.SetMaxOpenConns(25)
+	sqlDB.SetMaxIdleConns(25)
+	sqlDB.SetConnMaxLifetime(5 * time.Minute)
+
+	DB = db
+	log.Println("database connected")
+}
+
+func getenv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
+func main() {
+	
+}
